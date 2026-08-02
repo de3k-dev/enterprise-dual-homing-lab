@@ -1,0 +1,29 @@
+!=================================================
+! Hostname & Base Configuration
+!=================================================
+hostname ISP-2
+ip cef
+
+!=================================================
+! Interfaces
+!=================================================
+! Simulated External Internet Service (e.g. Quad8 DNS)
+interface Loopback0
+ ip address 8.8.8.8 255.255.255.255
+ no shutdown
+
+! Uplink to Customer HQ-R2-GW (eBGP)
+interface Ethernet0/0
+ ip address 203.0.113.1 255.255.255.252
+ no shutdown
+
+!=================================================
+! Dynamic Routing: BGP (AS 200)
+!=================================================
+router bgp 200
+ bgp log-neighbor-changes
+ network 8.8.8.8 mask 255.255.255.255
+ neighbor 203.0.113.2 remote-as 65001
+
+line con 0
+ logging synchronous
