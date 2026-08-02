@@ -1,0 +1,56 @@
+!=================================================
+! Hostname & Base Configuration
+!=================================================
+hostname Access-SW1
+ip cef
+
+!=================================================
+! Spanning-Tree (MSTP) & L2 Security
+!=================================================
+spanning-tree mode mst
+spanning-tree extend system-id
+!
+spanning-tree mst configuration
+ name LAB_THREE
+ revision 1
+ instance 1 vlan 10
+ instance 2 vlan 20
+
+!=================================================
+! Uplink Interfaces to Core Switches
+!=================================================
+! Uplink to Core-SW1
+interface GigabitEthernet0/0
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 10,20
+ switchport mode trunk
+ no shutdown
+
+! Uplink to Core-SW2
+interface GigabitEthernet0/1
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 10,20
+ switchport mode trunk
+ no shutdown
+
+!=================================================
+! Access Ports (End Devices)
+!=================================================
+! Client Port - VLAN 10 (IT / Services)
+interface GigabitEthernet0/2
+ switchport mode access
+ switchport access vlan 10
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ no shutdown
+
+! Client Port - VLAN 20 (Office / Staff)
+interface GigabitEthernet0/3
+ switchport mode access
+ switchport access vlan 20
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ no shutdown
+
+line con 0
+ logging synchronous
