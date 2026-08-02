@@ -1,0 +1,113 @@
+!=================================================
+! Hostname & Base Configuration
+!=================================================
+hostname Core-SW1
+ip cef
+
+!=================================================
+! Spanning-Tree (MSTP)
+!=================================================
+spanning-tree mode mst
+spanning-tree extend system-id
+!
+spanning-tree mst configuration
+ name LAB_THREE
+ revision 1
+ instance 1 vlan 10
+ instance 2 vlan 20
+!
+! Root Primary for Instance 1 (VLAN 10), Secondary for Instance 2 (VLAN 20)
+spanning-tree mst 1 priority 24576
+spanning-tree mst 2 priority 28672
+
+!=================================================
+! Object Tracking for HSRP Uplink Status
+!=================================================
+track 1 interface GigabitEthernet0/0 line-protocol
+
+!=================================================
+! Interfaces Configuration
+!=================================================
+interface Loopback1
+ ip address 3.3.3.3 255.255.255.255
+ no shutdown
+
+! L2 EtherChannel Trunk to Core-SW2
+interface Port-channel10
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 10,20
+ switchport mode trunk
+ no shutdown
+
+! Direct L3 Uplink to HQ-R1-GW (OSPF + BFD)
+interface GigabitEthernet0/0
+ no switchport
+ ip address 10.10.11.2 255.255.255.252
+ bfd interval 50 min_rx 50 multiplier 3
+ no shutdown
+
+! Physical Links in Port-Channel 10 (LACP)
+interface GigabitEthernet0/1
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 10,20
+ switchport mode trunk
+ channel-group 10 mode active
+ no shutdown
+
+interface GigabitEthernet0/2
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 10,20
+ switchport mode trunk
+ channel-group 10 mode active
+ no shutdown
+
+! Downlink / Trunk Interfaces
+interface GigabitEthernet0/3
+ switchport trunk encapsulation dot1q
+ switchport trunk allowed vlan 10,20
+ switchport mode trunk
+ no shutdown
+
+!=================================================
+! VLAN SVI & FHRP (HSRP) Configuration
+!=================================================
+interface Vlan10
+ ip address 172.16.10.2 255.255.255.0
+ no ip redirects
+ ! HSRP Active Group for IT / Services
+ standby 10 ip 172.16.10.1
+ standby 10 priority 110
+ standby 10 preempt
+ standby 10 track 1 decrement 20
+ ip ospf 1 area 0
+ no shutdown
+
+interface Vlan20
+ ip address 172.16.20.2 255.255.255.0
+ no ip redirects
+ ! HSRP Standby Group for Office / Staff
+ standby 20 ip 172.16.20.1
+ ip ospf 1 area 0
+ no shutdown
+
+!=================================================
+! Dynamic Routing: OSPFv2
+!=================================================
+router ospf 1
+ router-id 3.3.3.3
+ auto-cost reference-bandwidth 100000
+ passive-interface Vlan10
+ passive-interface Vlan20
+ network 3.3.3.3 0.0.0.0 area 0
+ network 10.10.11.0 0.0.0.3 area 0
+ network 172.16.10.0 0.0.0.255 area 0
+ network 172.16.20.0 0.0.0.255 area 0
+ bfd all-interfaces
+
+!=================================================
+! Static Default Route
+!=================================================
+ip route 0.0.0.0 0.0.0.0 10.10.11.1
+
+line con 0
+ logging synchronous
