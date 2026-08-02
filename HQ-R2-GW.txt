@@ -1,0 +1,75 @@
+!=================================================
+! Hostname & Base Configuration
+!=================================================
+hostname HQ-R2-GW
+ip cef
+
+!=================================================
+! Interfaces
+!=================================================
+interface Loopback1
+ ip address 2.2.2.2 255.255.255.255
+ no shutdown
+
+! Uplink to ISP-2 (eBGP)
+interface Ethernet0/0
+ ip address 203.0.113.2 255.255.255.252
+ ip nat outside
+ no shutdown
+
+! Link to HQ-R1-GW (iBGP + OSPF + BFD)
+interface Ethernet0/1
+ ip address 10.0.0.2 255.255.255.252
+ ip nat inside
+ bfd interval 50 min_rx 50 multiplier 3
+ no shutdown
+
+! Interconnect to Core-SW2 (OSPF + BFD)
+interface Ethernet0/2
+ ip address 10.10.22.1 255.255.255.252
+ ip nat inside
+ bfd interval 50 min_rx 50 multiplier 3
+ no shutdown
+
+!=================================================
+! Dynamic Routing: OSPFv2
+!=================================================
+router ospf 1
+ router-id 2.2.2.2
+ auto-cost reference-bandwidth 100000
+ network 2.2.2.2 0.0.0.0 area 0
+ network 10.0.0.0 0.0.0.3 area 0
+ network 10.10.22.0 0.0.0.3 area 0
+ bfd all-interfaces
+
+!=================================================
+! Dynamic Routing: BGP (AS 65001)
+!=================================================
+router bgp 65001
+ bgp log-neighbor-changes
+ network 172.16.0.0
+ ! iBGP Neighbor (HQ-R1-GW)
+ neighbor 1.1.1.1 remote-as 65001
+ neighbor 1.1.1.1 update-source Loopback1
+ neighbor 1.1.1.1 next-hop-self
+ ! eBGP Neighbor (ISP-2)
+ neighbor 203.0.113.1 remote-as 200
+ neighbor 203.0.113.1 route-map AS_PATH out
+
+! Static summary route to Null0 for BGP advertisement
+ip route 172.16.0.0 255.255.0.0 Null0
+
+!=================================================
+! Route-Maps & BGP Traffic Engineering
+!=================================================
+route-map AS_PATH permit 10
+ set as-path prepend 65001 65001 65001
+
+!=================================================
+! NAT & ACL Setup
+!=================================================
+access-list 1 permit 172.16.0.0 0.0.255.255
+ip nat inside source list 1 interface Ethernet0/0 overload
+
+line con 0
+ logging synchronous
